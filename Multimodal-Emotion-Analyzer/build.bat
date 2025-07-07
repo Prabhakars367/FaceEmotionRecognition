@@ -7,6 +7,23 @@ setlocal enabledelayedexpansion
 echo Multimodal Emotion Analyzer Build Script for Windows
 echo ===================================================
 
+REM Check if Python is installed and pybind11 is available
+echo Checking Python integration...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] Python is not installed or not in PATH
+    echo Python integration will be disabled
+) else (
+    echo [INFO] Python found - checking for pybind11...
+    python -c "import pybind11; print('pybind11 version:', pybind11.__version__)" >nul 2>&1
+    if errorlevel 1 (
+        echo [WARNING] pybind11 not found - Python integration will be disabled
+        echo [INFO] To enable Python integration, run: pip install pybind11
+    ) else (
+        echo [INFO] pybind11 found - Python integration will be enabled
+    )
+)
+
 REM Check if CMake is installed
 cmake --version >nul 2>&1
 if errorlevel 1 (

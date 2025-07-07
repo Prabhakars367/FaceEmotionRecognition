@@ -16,6 +16,48 @@ if(NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV not found. Please install OpenCV and set OpenCV_DIR correctly.")
 endif()
 
+# Python and pybind11 integration (optional)
+option(ENABLE_PYTHON_INTEGRATION "Enable Python-based deep learning inference" ON)
+
+if(ENABLE_PYTHON_INTEGRATION)
+    # Find Python
+    find_package(Python COMPONENTS Interpreter Development QUIET)
+    if(Python_FOUND)
+        message(STATUS "Found Python: ${Python_EXECUTABLE} (version ${Python_VERSION})")
+        
+        # Try to find pybind11
+        find_package(pybind11 QUIET)
+        if(pybind11_FOUND)
+            message(STATUS "Found pybind11: ${pybind11_VERSION}")
+            set(PYTHON_INTEGRATION_ENABLED TRUE)
+        else()
+            # Try to find pybind11 via pip install
+            execute_process(
+                COMMAND ${Python_EXECUTABLE} -c "import pybind11; print(pybind11.get_cmake_dir())"
+                OUTPUT_VARIABLE pybind11_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(pybind11_DIR)
+                find_package(pybind11 PATHS ${pybind11_DIR} QUIET)
+                if(pybind11_FOUND)
+                    message(STATUS "Found pybind11 via Python: ${pybind11_VERSION}")
+                    set(PYTHON_INTEGRATION_ENABLED TRUE)
+                endif()
+            endif()
+        endif()
+    endif()
+    
+    if(NOT PYTHON_INTEGRATION_ENABLED)
+        message(WARNING "Python or pybind11 not found. Python integration will be disabled.")
+        message(STATUS "To enable Python integration, install: pip install pybind11")
+        set(PYTHON_INTEGRATION_ENABLED FALSE)
+    endif()
+else()
+    set(PYTHON_INTEGRATION_ENABLED FALSE)
+    message(STATUS "Python integration disabled by user option")
+endif()
+
 # Set OpenCV path (Windows specific - adjust as needed)
 if(WIN32)
     set(OpenCV_DIR "C:/opencv/build/x64/vc16/lib")
@@ -112,6 +154,12 @@ if(PORTAUDIO_FOUND)
     target_include_directories(emotion_analyzer PRIVATE ${PORTAUDIO_INCLUDE_DIRS})
 endif()
 
+# Include Python directories if integration is enabled
+if(PYTHON_INTEGRATION_ENABLED)
+    target_include_directories(emotion_analyzer PRIVATE ${Python_INCLUDE_DIRS})
+    target_compile_definitions(emotion_analyzer PRIVATE PYTHON_INTEGRATION_ENABLED)
+endif()
+
 # Link libraries
 target_link_libraries(emotion_analyzer 
     PRIVATE ${OpenCV_LIBS}
@@ -123,6 +171,12 @@ if(PORTAUDIO_FOUND)
     message(STATUS "Linking PortAudio: ${PORTAUDIO_LIBRARIES}")
 else()
     message(STATUS "Building without PortAudio support")
+endif()
+
+# Link Python libraries if integration is enabled
+if(PYTHON_INTEGRATION_ENABLED)
+    target_link_libraries(emotion_analyzer PRIVATE pybind11::embed)
+    message(STATUS "Linking Python: ${Python_LIBRARIES}")
 endif()
 
 # Compiler-specific options
@@ -147,6 +201,11 @@ endif()
 # Copy models directory to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/models DESTINATION ${CMAKE_BINARY_DIR})
 
+# Copy Python scripts to build directory if Python integration is enabled
+if(PYTHON_INTEGRATION_ENABLED)
+    file(COPY ${CMAKE_SOURCE_DIR}/python DESTINATION ${CMAKE_BINARY_DIR})
+endif()
+
 # Also copy models to the output directory for the executable
 add_custom_command(TARGET emotion_analyzer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -154,6 +213,16 @@ add_custom_command(TARGET emotion_analyzer POST_BUILD
     $<TARGET_FILE_DIR:emotion_analyzer>/models
     COMMENT "Copying models to executable directory"
 )
+
+# Copy Python scripts to output directory if Python integration is enabled
+if(PYTHON_INTEGRATION_ENABLED)
+    add_custom_command(TARGET emotion_analyzer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/python
+        $<TARGET_FILE_DIR:emotion_analyzer>/python
+        COMMENT "Copying Python scripts to executable directory"
+    )
+endif()
 
 # Install targets
 install(TARGETS emotion_analyzer 
@@ -175,6 +244,12 @@ if(PORTAUDIO_FOUND)
     message(STATUS "PortAudio libraries: ${PORTAUDIO_LIBRARIES}")
 endif()
 message(STATUS "Audio support: ${PORTAUDIO_FOUND}")
+message(STATUS "Python integration: ${PYTHON_INTEGRATION_ENABLED}")
+if(PYTHON_INTEGRATION_ENABLED)
+    message(STATUS "Python version: ${Python_VERSION}")
+    message(STATUS "Python executable: ${Python_EXECUTABLE}")
+    message(STATUS "pybind11 version: ${pybind11_VERSION}")
+endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "============================")

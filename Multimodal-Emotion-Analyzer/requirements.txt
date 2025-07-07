@@ -1,0 +1,24 @@
+# Python dependencies for Multimodal Emotion Analyzer
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+numpy>=1.21.0
+opencv-python>=4.5.0
+pybind11>=2.10.0
+
+# Deep Learning Frameworks (at least one required)
+tensorflow>=2.8.0
+torch>=1.12.0
+torchvision>=0.13.0
+
+# Optional: ONNX Runtime for optimized inference
+onnxruntime>=1.12.0
+
+# Additional utilities
+scikit-learn>=1.0.0
+matplotlib>=3.5.0
+Pillow>=8.3.0
+
+# For audio processing (if extending Python functionality)
+librosa>=0.9.0
+scipy>=1.7.0
