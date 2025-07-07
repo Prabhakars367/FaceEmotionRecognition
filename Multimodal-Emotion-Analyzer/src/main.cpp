@@ -2,6 +2,7 @@
 #include <iostream>
 #include <csignal>
 #include <atomic>
+#include <opencv2/opencv.hpp>
 
 using namespace EmotionAnalysis;
 
@@ -32,10 +33,34 @@ void printUsage(const char* program_name) {
 }
 
 int main(int argc, char* argv[]) {
+    // Test basic functionality first
     std::cout << "=== Multimodal Emotion Analyzer ===" << std::endl;
     std::cout << "Real-time emotion analysis from video and audio input" << std::endl;
     std::cout << "Press 'q' or ESC in the video window to quit" << std::endl;
     std::cout << "=========================================" << std::endl;
+    
+    // Add debug output
+    std::cout << "Starting application..." << std::endl;
+    std::cout << "Arguments: " << argc << std::endl;
+    
+    // Check for --test flag for basic testing
+    bool test_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--test") {
+            test_mode = true;
+            break;
+        }
+    }
+    
+    if (test_mode) {
+        std::cout << "Running in test mode..." << std::endl;
+        std::cout << "OpenCV version: " << CV_VERSION << std::endl;
+        std::cout << "Test completed successfully!" << std::endl;
+        std::cout << "Press Enter to exit..." << std::endl;
+        std::cin.get();
+        return 0;
+    }
     
     // Setup signal handling
     std::signal(SIGINT, signalHandler);
@@ -46,6 +71,8 @@ int main(int argc, char* argv[]) {
     bool show_help = false;
     bool audio_only = false;
     bool video_only = false;
+    
+    std::cout << "Parsing command line arguments..." << std::endl;
     
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -84,25 +111,38 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     
+    std::cout << "Configuration complete. Starting analyzer..." << std::endl;
+    
     // Adjust config based on mode
     if (audio_only) {
+        std::cout << "Running in audio-only mode" << std::endl;
         config.show_video = false;
         config.fusion_config.video_weight = 0.0f;
         config.fusion_config.audio_weight = 1.0f;
     }
     else if (video_only) {
+        std::cout << "Running in video-only mode" << std::endl;
         config.fusion_config.video_weight = 1.0f;
         config.fusion_config.audio_weight = 0.0f;
     }
+    else {
+        std::cout << "Running in full multimodal mode" << std::endl;
+    }
     
     try {
+        std::cout << "Creating analyzer instance..." << std::endl;
         // Create and initialize analyzer
         g_analyzer = std::make_unique<MultimodalEmotionAnalyzer>();
         
+        std::cout << "Initializing analyzer with config..." << std::endl;
         if (!g_analyzer->initialize(config)) {
             std::cerr << "Failed to initialize emotion analyzer" << std::endl;
+            std::cout << "Press Enter to exit..." << std::endl;
+            std::cin.get();
             return -1;
         }
+        
+        std::cout << "Analyzer initialized successfully!" << std::endl;
         
         // Set up emotion callback for logging
         g_analyzer->setEmotionCallback([](const MultimodalResult& result) {
